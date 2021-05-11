@@ -15,10 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth import views
 
 from apps.cart.views import cart_detail
 from apps.core.views import frontpage, contact
 from apps.store.views import product_detail, category_detail, search
+from apps.userprofile.views import signup, myaccount
 
 from apps.store.api import api_add_to_cart, api_remove_from_cart, api_checkout
 
@@ -28,6 +30,13 @@ urlpatterns = [
     path('cart/', cart_detail, name='cart'),
     path('contact/', contact, name='contact'),
     path('admin/', admin.site.urls),
+
+    # Auth
+
+    path('myaccount/', myaccount, name='myaccount'),
+    path('signup/', signup, name='signup'),
+    path('login/', views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('logout/', views.LogoutView.as_view(), name='logout'),
 
     # API
 

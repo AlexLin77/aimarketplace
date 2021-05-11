@@ -3,6 +3,8 @@ from django.db.models import Q
 
 from .models import Product, Category
 
+from apps.algos.data import Dataset
+
 def search(request):
     query = request.GET.get('query')
     products = Product.objects.filter(Q(title__icontains=query) | Q(description__icontains=query))
@@ -11,6 +13,14 @@ def search(request):
       'query': query,
       'products': products
     }
+
+    dataset = Dataset(request)
+
+    for product in products:
+        if request.user.is_authenticated:
+            dataset.add(product, request.user.username, 0.5)
+        else:
+            dataset.add(product, 'guest', 0.5)
 
     return render(request, 'search.html', context)
 

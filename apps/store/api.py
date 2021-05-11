@@ -5,6 +5,8 @@ from django.shortcuts import get_object_or_404, redirect
 
 from apps.cart.cart import Cart
 
+from apps.algos.data import Dataset
+
 from apps.order.utils import checkout
 
 from .models import Product
@@ -13,6 +15,7 @@ from apps.order.models import Order
 
 def api_checkout(request):
     cart = Cart(request)
+    dataset = Dataset(request)
 
     data = json.loads(request.body)
     jsonresponse = {'success': True}
@@ -24,6 +27,7 @@ def api_checkout(request):
     order.save()
 
     cart.clear()
+    dataset.clear()
 
     return JsonResponse(jsonresponse)
 
@@ -35,13 +39,22 @@ def api_add_to_cart(request):
     quantity = data['quantity']
 
     cart = Cart(request)
+    dataset = Dataset(request)
 
     product = get_object_or_404(Product, pk=product_id)
 
     if not update:
         cart.add(product=product, quantity=1, update_quantity=False)
+        if request.user.is_authenticated:
+            dataset.add(product=product, username=request.user.username, weight=1)
+        else:
+            dataset.add(product=product, username='guest', weight=1)
     else:
         cart.add(product=product, quantity=quantity, update_quantity=True)
+        if request.user.is_authenticated:
+            dataset.add(product=product, username=request.user.username, weight=1)
+        else:
+            dataset.add(product=product, username='guest', weight=1)
 
     return JsonResponse(jsonresponse)
 

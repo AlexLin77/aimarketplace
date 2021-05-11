@@ -51,7 +51,19 @@
         <div class="navbar-item">
           <a href="{% url 'cart' %}" class="button is-primary">Cart</a>
         </div>
-        <a href="{% url 'contact' %}" class="navbar-item">Contact</a>
+
+        {% if request.user.is_authenticated %}
+          <div class="navbar-item">
+            <a href="{% url 'myaccount' %}" class="button is-light">My Account</a>
+          </div>
+        {% else %}
+          <div class="navbar-item">
+            <div class="buttons">
+              <a href="{% url 'signup' %}" class="button is-primary"><strong>Sign Up</strong></a> 
+              <a href="{% url 'login' %}" class="button is-light">Log In</a>
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
   </nav>

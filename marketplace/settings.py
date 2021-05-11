@@ -27,10 +27,19 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'cart'
+LOGOUT_REDIRECT_URL = 'frontpage'
+
 # Cart
 
 SESSION_COOKIE_AGE = 86400
 CART_SESSION_ID = 'cart'
+
+# Dataset
+
+SESSION_COOKIE_AGE = 86400
+ALGOS_SESSION_ID = 'dataset'
 
 
 # Application definition
@@ -42,10 +51,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'apps.algos',
     'apps.cart',
     'apps.core',
     'apps.order',
-    'apps.store'
+    'apps.store',
+    'apps.userprofile',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,49 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+  <h1 class="title">My account</h1>
+
+  <a href="{% url 'logout' %}" class="button is-danger">Log Out</a>
+
+  <hr>
+
+  <h2 class="subtitle">Account Information</h2>
+
+  <p><strong>Name: </strong>{{ request.user.get_full_name }}</p>
+
+  <hr>
+
+  <h2 class="subtitle">My Orders</h2>
+
+  {% for order in request.users.orders.all %}
+    <article class="message is-light">
+      <div class="message-header">
+        <p>{{ order.created_at }}</p>
+      </div>
+
+      <div class="message-body">
+        <table class="table is-striped is-fullwidth">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Quantity</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for item in order.items.all %}
+              <tr>
+                <td>{{ item.product.title }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.price }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  {% empty %}
+    <p>You don't have any orders.</p>
+  {% endfor %}
+{% endblock %}
