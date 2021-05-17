@@ -3,7 +3,7 @@ from django.db.models import Q
 
 from .models import Product, Category
 
-from apps.algos.data import Dataset
+from apps.algos.data import Userdata
 
 def search(request):
     query = request.GET.get('query')
@@ -14,7 +14,7 @@ def search(request):
       'products': products
     }
 
-    dataset = Dataset(request)
+    dataset = Userdata(request)
 
     for product in products:
         if request.user.is_authenticated:

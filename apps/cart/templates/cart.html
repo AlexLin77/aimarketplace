@@ -59,7 +59,7 @@
     delimiters: ['[[', ']]'],
     data() {
       return {
-        first_name: '',
+        first_name: '{{ first_name }}',
         products: [{{ productsstring | safe }}]
       }
     },

@@ -7,7 +7,7 @@ from apps.cart.cart import Cart
 
 from apps.order.models import Order, OrderItem
 
-from apps.algos.data import Dataset
+from apps.algos.data import Userdata
 
 def checkout(request, first_name):
     order = Order(first_name=first_name)
@@ -18,7 +18,7 @@ def checkout(request, first_name):
     order.save()
 
     cart = Cart(request)
-    dataset = Dataset(request)
+    dataset = Userdata(request)
 
     for item in cart:
         OrderItem.objects.create(order=order, product=item['product'], price=item['price'], quantity=item['quantity'])

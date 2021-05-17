@@ -41,6 +41,10 @@ CART_SESSION_ID = 'cart'
 SESSION_COOKIE_AGE = 86400
 ALGOS_SESSION_ID = 'dataset'
 
+# Metadata
+
+SESSION_COOKIE_AGE = 86400
+META_SESSION_ID = 'metadata'
 
 # Application definition
 

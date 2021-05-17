@@ -16,7 +16,7 @@ def cart_detail(request):
     if request.user.is_authenticated:
         first_name = request.user.first_name
     else:
-        first_name = ''
+        first_name = 'guest'
 
     context = {
         'cart': cart,

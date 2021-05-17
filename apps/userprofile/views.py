@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 
+from apps.algos.meta import Metadata
+
 from .forms import SignUpForm
 
 def signup(request):
@@ -10,6 +12,14 @@ def signup(request):
 
         if form.is_valid():
             user = form.save()
+
+            mds = Metadata(request)
+            username = user.username
+            age = user.age
+            gender = user.gender
+            region = user.region
+            
+            mds.add(username, age, gender, region)
 
             login(request, user)
 

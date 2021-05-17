@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 
 from apps.cart.cart import Cart
 
-from apps.algos.data import Dataset
+from apps.algos.data import Userdata
 
 from apps.order.utils import checkout
 
@@ -15,7 +15,7 @@ from apps.order.models import Order
 
 def api_checkout(request):
     cart = Cart(request)
-    dataset = Dataset(request)
+    # dataset = Userdata(request)
 
     data = json.loads(request.body)
     jsonresponse = {'success': True}
@@ -27,7 +27,7 @@ def api_checkout(request):
     order.save()
 
     cart.clear()
-    dataset.clear()
+    # dataset.clear()
 
     return JsonResponse(jsonresponse)
 
@@ -39,7 +39,7 @@ def api_add_to_cart(request):
     quantity = data['quantity']
 
     cart = Cart(request)
-    dataset = Dataset(request)
+    dataset = Userdata(request)
 
     product = get_object_or_404(Product, pk=product_id)
 
