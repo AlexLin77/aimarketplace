@@ -13,13 +13,13 @@ def signup(request):
         if form.is_valid():
             user = form.save()
 
-            mds = Metadata(request)
+            mds = Metadata()
             username = user.username
             age = user.age
             gender = user.gender
-            region = user.region
+            occupation = user.occupation
             
-            mds.add(username, age, gender, region)
+            mds.add(username, age, gender, occupation)
 
             login(request, user)
 

@@ -1,31 +1,34 @@
 from .data import Userdata
+from .meta import Metadata
 
 from apps.store.models import Product
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from surprise import Dataset, Reader
-from surprise import KNNBasic
-from surprise.model_selection import train_test_split
+from sklearn.model_selection import train_test_split
+from scipy.sparse import csr_matrix
+from sklearn.neighbors import NearestNeighbors
+from tensorflow.keras.models import load_model
+from tensorflow import argsort
 from collections import defaultdict
+import pickle
 import numpy as np
 import pandas as pd
-
+import json
 
 def refresh(request):
-    ds = Userdata(request)
+    ds = Userdata()
     
     if request.user.is_authenticated:
         curr_user = request.user.username
-    else:
-        curr_user = 'guest'
-    
-    if curr_user in ds.dataset:
-        prefs = ds.dataset[curr_user]
-        sorted_prefs = {key: val for key, val in sorted(prefs.items(), key=lambda item: item[1])}
 
-        lst = list(sorted_prefs.keys())
+        nn_results = nn_exec(curr_user)
+        knn_results = cf_exec(curr_user)
 
-        featured = description_sim(lst)
+        featured = []
+        for result in nn_results:
+            featured.append(result)
+        for result in knn_results:
+            featured.append(result)
+        
         print(featured)
 
         for product in Product.objects.all():
@@ -33,6 +36,25 @@ def refresh(request):
                 print(product.title)
                 product.is_featured = True
                 product.save()
+
+    # else:
+    #     curr_user = 'guest'
+    
+    #     if curr_user in ds.dataset:
+    #         prefs = ds.dataset[curr_user]
+    #         sorted_prefs = {key: val for key, val in sorted(prefs.items(), key=lambda item: item[1])}
+
+    #         lst = list(sorted_prefs.keys())
+
+    #         # call jaccard function here
+    #         featured = description_sim(lst)
+    #         print(featured)
+
+    #         for product in Product.objects.all():
+    #             if product.title in featured:
+    #                 print(product.title)
+    #                 product.is_featured = True
+    #                 product.save()
 
 
 def description_sim(items):
@@ -70,50 +92,205 @@ def description_sim(items):
 
     return result_items[:5]
 
-def collab_filter(request):
-    ds = Userdata(request)
+# def data_load(request):
+#     ds = Userdata()
+#     md = Metadata()
 
-    data_dict = defaultdict(list)
+#     data_dict = defaultdict(list)
 
-    for user in ds:
-      for item in ds[user]:
-          score = ds[user][item]
-          data_dict['users'].append(user)
-          data_dict['items'].append(item)
-          data_dict['score'].append(score)
+#     for user in ds:
+#       for item in ds[user]:
+#           score = ds[user][item]
+#           data_dict['users'].append(user)
+#           data_dict['items'].append(item)
+#           data_dict['score'].append(score)
     
-    df = pd.DataFrame(data_dict)
-    reader = Reader(rating_scale=(0, 30))
+#     df = pd.DataFrame(data_dict)
+#     # replace filename
+#     df.to_csv('static/ratings.csv')
 
-    data = Dataset.load_from_df(df, reader)
+#     md_dict = defaultdict(list)
 
-    # may change train/test proportions
-    trainset, testset = train_test_split(data, test_size=0.25)
+#     for user in md:
+#         for lst in md[user]:
+#             age = lst[0]
+#             gender = lst[1]
+#             occupation = lst[2]
+#             md_dict['users'].append(user)
+#             md_dict['ages'].append(age)
+#             if gender == 'male':
+#                 md_dict['gender'].append(True)
+#             else:
+#                 md_dict['gender'].append(False)
+#             md_dict['occupation'].append(occupation)
+    
+#     mdf = pd.DataFrame(md_dict)
+#     # replace filename
+#     mdf.to_csv('static/users.csv')
 
-    # toggle between user-based and item-based
-    sim_options = {
-        'name': 'cosine',
-        'user_based': False
-    }
-    algo = KNNBasic(sim_options)
+def cf_exec(user):
 
-    predict = algo.test(testset)
+    # filename = 'apps/algos/knnmodel.sav'
 
-    if request.user.is_authenticated:
-        user_check = request.user.username
-    else:
-        user_check = 'guest'
+    # model = pickle.load(open(filename, 'rb'))
+
+    df = pd.read_csv('static/ratings.csv')
+
+    df = df.drop(['timestamp'], axis=1)
+
+    df_mtx = df.pivot(index='movieId', columns='userId', values='rating').fillna(0)
+
+    final_mtx = csr_matrix(df_mtx)
+
+    trainset, testset= train_test_split(final_mtx, test_size=0.15)
+
+    model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=15, n_jobs=-1)
+    model.fit(trainset)
 
     results = []
-    for user, item, real, est, _ in predict:
-        if user == user_check:
-            results.append((item, est))
+
+    with open('static/ratings.json', 'r') as jfile:
+        dataset = json.load(jfile)
+
+    with open('static/movie-to-index.json', 'r') as jfile:
+        movie_to_index = json.load(jfile)
+
+    with open('static/index-to-movie.json', 'r') as jfile:
+        index_to_movie = json.load(jfile)
     
-    results = sorted(results, key=lambda x: x[1], reverse=True)
+    user_only = {}
+    if user not in dataset:
+        return []
+  
+    for movie in dataset[user]:
+        mov_idx = movie_to_index[movie]
+        rating = dataset[user][movie]
+        user_only[mov_idx] = rating
+    
+    df_new = pd.DataFrame(user_only.items(), columns=['movieId', 'rating'])
 
-    results_items = [tup[0] for tup in results]
+    df_new.insert(1, 'userId', 999)
 
-    return results_items[:5]
+    df_mtx = df.pivot(index='movieId', columns='userId', values='rating').fillna(0)
+
+    # final_mtx = csr_matrix(df_mtx)
+
+    distances, indices = model.kneighbors(df_mtx, n_neighbors=5)
+
+    # get closest ones only
+    for i in range(int(distances.size/5)):
+        dist = distances[i].item(0)
+        idx = str(indices[i].item(0))
+        if idx in index_to_movie:
+            results.append((index_to_movie[str(idx)], dist))
+    
+    results = sorted(results, key=lambda x: x[1], reverse=False)
+
+    result_items = [tup[0] for tup in results]
+
+    return result_items[:10]
+
+def nn_exec(user):
+    
+    model = load_model('apps/algos/nnmodel.h5')
+
+    with open('static/ratings.json', 'r') as jfile:
+        dataset = json.load(jfile)
+    
+    with open('static/users.json', 'r') as jfile:
+        users = json.load(jfile)
+
+    with open('static/movie-to-index.json', 'r') as jfile:
+        movie_to_index = json.load(jfile)
+
+    with open('static/index-to-movie.json', 'r') as jfile:
+        index_to_movie = json.load(jfile)
+    
+    dicts_compiled = pickle.load(open('apps/algos/dicts-compiled.npz', 'rb'))
+    
+    user_only = []
+    if user not in dataset or user not in users:
+        return []
+    
+    # movie names to movie indices
+    # only movies not seen?
+    for movie in movie_to_index:
+        if movie not in dataset[user]:
+            mov_idx = movie_to_index[movie]
+            user_only.append(mov_idx)
+
+    df = pd.DataFrame(user_only, columns=['movieId'])
+
+    user_age = users[user][0]
+    user_gender = users[user][1]
+    user_occupation = users[user][2]
+
+    if user_age < 18:
+        df['age'] = 1.0
+    elif user_age >= 18 and user_age < 25:
+        df['age'] = 18.0
+    elif user_age >= 25 and user_age < 35:
+        df['age'] = 25.0
+    elif user_age >= 35 and user_age < 45:
+        df['age'] = 35.0
+    elif user_age >= 45 and user_age < 50:
+        df['age'] = 45.0
+    elif user_age >= 50 and user_age < 55:
+        df['age'] = 50.0
+    elif user_age >= 55:
+        df['age'] = 55.0
+    
+    if user_gender == 'male':
+        df['gender'] = True
+    else:
+        df['gender'] = False
+
+    df['occupation'] = user_occupation
+
+    df.insert(0, 'userId', 671)
+
+    # print(df.head())
+
+    inv_items_map = dicts_compiled['inv_items_map']
+    items_map = dicts_compiled['items_map']
+    inv_ages_map = dicts_compiled['inv_ages_map']
+    inv_genders_map = dicts_compiled['inv_genders_map']
+    inv_occupations_map = dicts_compiled['inv_occupations_map']
+
+    # print(len(inv_items_map))
+
+    # movie indices to model indices
+    df['movieId'] = df['movieId'].map(inv_items_map)
+    df['age'] = df['age'].map(inv_ages_map)
+    df['gender'] = df['gender'].map(inv_genders_map)
+    df['occupation'] = df['occupation'].map(inv_occupations_map)
+
+    # print(df['movieId'].nunique())
+
+    df = df.dropna()
+    df['movieId'] = df['movieId'].astype('int64')
+
+    model_index_to_position = {i:idx for i, idx in enumerate(df['movieId'])}
+
+    predictions = model.predict([df['userId'], df['age'], df['gender'], df['occupation'], df['movieId']])
+
+    # top 10 results
+    sort = argsort(predictions.flatten(), direction='DESCENDING')[:10]
+    top = sort.numpy()
+
+    results = []
+
+    for idx in top:
+        model_idx = model_index_to_position[idx]
+        movie_idx = items_map[model_idx]
+        movie_name = index_to_movie[str(movie_idx)]
+        results.append(movie_name)
+
+    return results
+
+    
+
+
 
 
 

@@ -14,13 +14,13 @@ def search(request):
       'products': products
     }
 
-    dataset = Userdata(request)
+    dataset = Userdata()
 
     for product in products:
         if request.user.is_authenticated:
-            dataset.add(product, request.user.username, 0.5)
+            dataset.add(product, request.user.username, 0.1)
         else:
-            dataset.add(product, 'guest', 0.5)
+            dataset.add(product, 'guest', 0.1)
 
     return render(request, 'search.html', context)
 

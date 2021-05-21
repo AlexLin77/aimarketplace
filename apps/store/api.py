@@ -39,22 +39,22 @@ def api_add_to_cart(request):
     quantity = data['quantity']
 
     cart = Cart(request)
-    dataset = Userdata(request)
+    dataset = Userdata()
 
     product = get_object_or_404(Product, pk=product_id)
 
     if not update:
         cart.add(product=product, quantity=1, update_quantity=False)
         if request.user.is_authenticated:
-            dataset.add(product=product, username=request.user.username, weight=1)
+            dataset.add(product=product, username=request.user.username, weight=0.5)
         else:
-            dataset.add(product=product, username='guest', weight=1)
+            dataset.add(product=product, username='guest', weight=0.5)
     else:
         cart.add(product=product, quantity=quantity, update_quantity=True)
         if request.user.is_authenticated:
-            dataset.add(product=product, username=request.user.username, weight=1)
+            dataset.add(product=product, username=request.user.username, weight=0.5)
         else:
-            dataset.add(product=product, username='guest', weight=1)
+            dataset.add(product=product, username='guest', weight=0.5)
 
     return JsonResponse(jsonresponse)
 

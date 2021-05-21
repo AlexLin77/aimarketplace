@@ -5,14 +5,12 @@ from apps.store.models import Product
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import pandas as pd
+import json
 
 class Userdata(object):
-    def __init__(self, request):
-        self.session = request.session
-        dataset = self.session.get(settings.ALGOS_SESSION_ID)
-
-        if not dataset:
-            dataset = self.session[settings.ALGOS_SESSION_ID] = {}
+    def __init__(self):
+        with open('static/ratings.json', 'r') as jfile:
+            dataset = json.load(jfile)
 
         self.dataset = dataset
     
@@ -26,20 +24,11 @@ class Userdata(object):
             if product_title not in self.dataset[username]:
                 self.dataset[username][product_title] = weight
             elif product_title in self.dataset[username]:
-                if self.dataset[username][product_title] + weight > 30:
-                    self.dataset[username][product_title] = 30
+                if self.dataset[username][product_title] + weight > 5:
+                    self.dataset[username][product_title] = 5
                 else:
                     self.dataset[username][product_title] += weight
         
-        self.save()
-
-    def save(self):
-        self.session[settings.ALGOS_SESSION_ID] = self.dataset
-        self.session.modified = True
-
-        print(self.dataset)
-    
-    def clear(self):
-        del self.session[settings.ALGOS_SESSION_ID]
-        self.session.modified = True
+        with open('static/ratings.json', 'w') as jfile:
+            json.dump(self.dataset, jfile, indent=4)
 

@@ -1,0 +1,19 @@
+{
+    "test1": {
+        "Jumanji (1995)": 2.5,
+        "Heat (1995)": 0.5,
+        "Waiting to Exhale (1995)": 2.0,
+        "Sabrina (1995)": 1.5,
+        "Tom and Huck (1995)": 2.0,
+        "Toy Story (1995)": 1.5
+    },
+    "guest": {
+        "Sabrina (1995)": 0.5,
+        "Jumanji (1995)": 0.5
+    },
+    "test2": {
+        "Toy Story (1995)": 1.0,
+        "Waiting to Exhale (1995)": 0.5,
+        "Grumpier Old Men (1995)": 0.5
+    }
+}

@@ -18,13 +18,13 @@ def checkout(request, first_name):
     order.save()
 
     cart = Cart(request)
-    dataset = Userdata(request)
+    dataset = Userdata()
 
     for item in cart:
         OrderItem.objects.create(order=order, product=item['product'], price=item['price'], quantity=item['quantity'])
         if request.user.is_authenticated:
-            dataset.add(product=item['product'], username=request.user.username, weight=1.5)
+            dataset.add(product=item['product'], username=request.user.username, weight=1)
         else:
-            dataset.add(product=item['product'], username='guest', weight=1.5)
+            dataset.add(product=item['product'], username='guest', weight=1)
     
     return order.id
