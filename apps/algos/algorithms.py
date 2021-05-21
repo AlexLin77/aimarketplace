@@ -6,6 +6,7 @@ from apps.store.models import Product
 from sklearn.model_selection import train_test_split
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MaxAbsScaler
 from tensorflow.keras.models import load_model
 from tensorflow import argsort
 from collections import defaultdict
@@ -20,14 +21,26 @@ def refresh(request):
     if request.user.is_authenticated:
         curr_user = request.user.username
 
-        nn_results = nn_exec(curr_user)
-        knn_results = cf_exec(curr_user)
-
         featured = []
+
+        nn_results = nn_exec(curr_user)
+
         for result in nn_results:
             featured.append(result)
-        for result in knn_results:
-            featured.append(result)
+
+        with open('static/ratings.json', 'r') as jfile:
+            dataset = json.load(jfile)
+
+        if curr_user in dataset:
+            prefs = dataset[curr_user]
+            sorted_prefs = {key: val for key, val in sorted(prefs.items(), key=lambda item: item[1])}
+            
+            lst = list(sorted_prefs.keys())
+
+            knn_results = cf_exec(lst[:5])
+
+            for result in knn_results:
+                featured.append(result)
         
         print(featured)
 
@@ -128,7 +141,7 @@ def description_sim(items):
 #     # replace filename
 #     mdf.to_csv('static/users.csv')
 
-def cf_exec(user):
+def cf_exec(items):
 
     # filename = 'apps/algos/knnmodel.sav'
 
@@ -144,8 +157,13 @@ def cf_exec(user):
 
     trainset, testset= train_test_split(final_mtx, test_size=0.15)
 
+    # scaler = MaxAbsScaler()
+    # trainset_scaled = scaler.fit_transform(trainset)
+
     model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=15, n_jobs=-1)
     model.fit(trainset)
+
+    # print(trainset.shape)
 
     results = []
 
@@ -158,30 +176,22 @@ def cf_exec(user):
     with open('static/index-to-movie.json', 'r') as jfile:
         index_to_movie = json.load(jfile)
     
-    user_only = {}
-    if user not in dataset:
-        return []
-  
-    for movie in dataset[user]:
-        mov_idx = movie_to_index[movie]
-        rating = dataset[user][movie]
-        user_only[mov_idx] = rating
+    movie_idxs = []
+    for movie in items:
+        movie_idxs.append(movie_to_index[movie])
     
-    df_new = pd.DataFrame(user_only.items(), columns=['movieId', 'rating'])
+    print(movie_idxs)
+    
+    selected = df_mtx.loc[movie_idxs]
 
-    df_new.insert(1, 'userId', 999)
-
-    df_mtx = df.pivot(index='movieId', columns='userId', values='rating').fillna(0)
-
-    # final_mtx = csr_matrix(df_mtx)
-
-    distances, indices = model.kneighbors(df_mtx, n_neighbors=5)
+    final_selected = csr_matrix(selected)
+    distances, indices = model.kneighbors(final_selected, n_neighbors=5)
 
     # get closest ones only
     for i in range(int(distances.size/5)):
         dist = distances[i].item(0)
         idx = str(indices[i].item(0))
-        if idx in index_to_movie:
+        if idx in index_to_movie and idx not in items:
             results.append((index_to_movie[str(idx)], dist))
     
     results = sorted(results, key=lambda x: x[1], reverse=False)
@@ -235,10 +245,10 @@ def nn_exec(user):
         df['age'] = 35.0
     elif user_age >= 45 and user_age < 50:
         df['age'] = 45.0
-    elif user_age >= 50 and user_age < 55:
+    elif user_age >= 50 and user_age < 56:
         df['age'] = 50.0
-    elif user_age >= 55:
-        df['age'] = 55.0
+    elif user_age >= 56:
+        df['age'] = 56.0
     
     if user_gender == 'male':
         df['gender'] = True
@@ -257,8 +267,6 @@ def nn_exec(user):
     inv_genders_map = dicts_compiled['inv_genders_map']
     inv_occupations_map = dicts_compiled['inv_occupations_map']
 
-    # print(len(inv_items_map))
-
     # movie indices to model indices
     df['movieId'] = df['movieId'].map(inv_items_map)
     df['age'] = df['age'].map(inv_ages_map)
@@ -267,8 +275,12 @@ def nn_exec(user):
 
     # print(df['movieId'].nunique())
 
+    # print(df.head())
+
     df = df.dropna()
     df['movieId'] = df['movieId'].astype('int64')
+
+    # print(df.head())
 
     model_index_to_position = {i:idx for i, idx in enumerate(df['movieId'])}
 

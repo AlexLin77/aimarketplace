@@ -8,5 +8,15 @@
         44,
         "male",
         "engineer"
+    ],
+    "test3": [
+        70,
+        "male",
+        "retired"
+    ],
+    "test4": [
+        8,
+        "female",
+        "none"
     ]
 }
