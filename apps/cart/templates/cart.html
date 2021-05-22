@@ -1,10 +1,10 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Cart | {% endblock %}
+{% block title %}Watchlist | {% endblock %}
 
 {% block content %}
 <div id="cartapp">
-  <h1 class="title">Cart</h1>
+  <h1 class="title">Watchlist</h1>
 
   {% if cart %}
   <div class="table">
@@ -21,7 +21,7 @@
           <td>[[ product.title ]]</td>
           <td><button @click="decrementQuantity(product.id, product.quantity)">-</button> [[ product.quantity ]] <button @click="incrementQuantity(product.id, product.quantity)">+</button></td>
           <td>[[ product.total_price ]]</td>
-          <td><button @click="removeFromCart(product.id)">Remove from cart</button></td>
+          <td><button @click="removeFromCart(product.id)">Remove from watchlist</button></td>
         </tr>
       </tbody>
     </table>
@@ -42,7 +42,7 @@
     </div>
     <div class="field">
       <div class="control">
-        <button class="button is-primary">Checkout</button>
+        <button class="button is-primary">Watch</button>
       </div>    
     </div>
   </form>

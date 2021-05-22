@@ -14,6 +14,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import json
+import tensorflow_datasets as tfds
 
 def refresh(request):
     ds = Userdata()
@@ -50,96 +51,140 @@ def refresh(request):
                 product.is_featured = True
                 product.save()
 
-    # else:
-    #     curr_user = 'guest'
+    else:
+          curr_user = 'guest'
+
+          with open('static/ratings.json', 'r') as jfile:
+            dataset = json.load(jfile)
     
-    #     if curr_user in ds.dataset:
-    #         prefs = ds.dataset[curr_user]
-    #         sorted_prefs = {key: val for key, val in sorted(prefs.items(), key=lambda item: item[1])}
+          if curr_user in dataset:
+              prefs = dataset[curr_user]
+              sorted_prefs = {key: val for key, val in sorted(prefs.items(), key=lambda item: item[1])}
 
-    #         lst = list(sorted_prefs.keys())
+              lst = list(sorted_prefs.keys())
 
-    #         # call jaccard function here
-    #         featured = description_sim(lst)
-    #         print(featured)
+              content_filter(lst)
 
-    #         for product in Product.objects.all():
-    #             if product.title in featured:
-    #                 print(product.title)
-    #                 product.is_featured = True
-    #                 product.save()
+              # call jaccard function here
+              featured = content_filter(lst)
+              print(featured)
 
+              for product in Product.objects.all():
+                  if product.title in featured:
+                      print(product.title)
+                      product.is_featured = True
+                      product.save()
 
-def description_sim(items):
+def content_filter(items):
 
-    df = pd.read_csv('static/sample-data.csv')
+    df = pd.read_csv('static/movies.csv')
 
-    item_to_index = {}
-    index_to_item = {}
-    for i in range(len(df)):
-        desc = df.loc[i, 'description']
-        item_name = desc.split(' - ')[0]
-        item_to_index[item_name] = i
-        index_to_item[i] = item_name
-    
-    cossim_matrix = np.load('static/cossim-matrix.npy')
+    df['genres'] = df['genres'].map(lambda x: x.replace('|', ', '))
 
-    top_results = int(len(items)/2)
-    total_vector = np.zeros(len(cossim_matrix))
-    item_indexes = []
-    for i in range(top_results):
-        # centroid vector
-        item_idx = item_to_index[items[i]]
-        item_indexes.append(item_idx)
-        total_vector += cossim_matrix[item_idx]
-    
-    total_vector /= top_results
-    
     results = []
-    for idx, score in enumerate(total_vector):
-        if idx not in item_indexes:
-            results.append((index_to_item[idx], score))
-    results = sorted(results, key=lambda x: x[1], reverse=True)
 
-    result_items = [tup[0] for tup in results]
+    for movie in items:
+        input_row = df.loc[df.title == movie, 'genres']
+        input_genres = ''.join(input_row.tolist())
+        input_genres = input_genres.split(',')
+        # print(len(input_genres))
 
-    return result_items[:5]
+        temp = []
 
-# def data_load(request):
-#     ds = Userdata()
-#     md = Metadata()
+        for row in df.iterrows():
+            if row[1]['title'] != movie:
+                comp_str = row[1]['genres']
+                comp_genres = comp_str.split(',')
 
-#     data_dict = defaultdict(list)
+                num = 0
+                denom = 0
 
-#     for user in ds:
-#       for item in ds[user]:
-#           score = ds[user][item]
-#           data_dict['users'].append(user)
-#           data_dict['items'].append(item)
-#           data_dict['score'].append(score)
+                all_genres = []
+                if len(input_genres) >= len(comp_genres):
+                    for genre in comp_genres:
+                        if genre in input_genres:
+                            num += 1
+                            denom += 1
+                            all_genres.append(genre)
+                        else:
+                            denom += 1
+                            all_genres.append(genre)
+                    for genre in input_genres:
+                        if genre not in all_genres:
+                            denom += 1
+                            all_genres.append(genre)
+                else:
+                    for genre in input_genres:
+                        if genre in comp_genres:
+                            num += 1
+                            denom += 1
+                            all_genres.append(genre)
+                        else:
+                            denom += 1
+                            all_genres.append(genre)
+                    for genre in comp_genres:
+                        if genre not in all_genres:
+                            denom += 1
+                            all_genres.append(genre)
+                
+                score = num / denom
+
+                temp.append((row[1]['title'], score))
+
+        temp = sorted(temp, key=lambda x: x[1], reverse=True)
+
+        for elt in temp[:2]:
+            results.append(elt[0])
     
-#     df = pd.DataFrame(data_dict)
-#     # replace filename
-#     df.to_csv('static/ratings.csv')
+    final = []
 
-#     md_dict = defaultdict(list)
-
-#     for user in md:
-#         for lst in md[user]:
-#             age = lst[0]
-#             gender = lst[1]
-#             occupation = lst[2]
-#             md_dict['users'].append(user)
-#             md_dict['ages'].append(age)
-#             if gender == 'male':
-#                 md_dict['gender'].append(True)
-#             else:
-#                 md_dict['gender'].append(False)
-#             md_dict['occupation'].append(occupation)
+    with open('static/ratings.json', 'r') as jfile:
+        dataset = json.load(jfile)
     
-#     mdf = pd.DataFrame(md_dict)
-#     # replace filename
-#     mdf.to_csv('static/users.csv')
+    for result in results:
+        if result in dataset['guest']:
+            if dataset['guest'][result] < 1:
+                final.append(result)
+        else:
+            final.append(result)
+    
+    return final
+
+
+# def description_sim(items):
+
+#     df = pd.read_csv('static/sample-data.csv')
+
+#     item_to_index = {}
+#     index_to_item = {}
+#     for i in range(len(df)):
+#         desc = df.loc[i, 'description']
+#         item_name = desc.split(' - ')[0]
+#         item_to_index[item_name] = i
+#         index_to_item[i] = item_name
+    
+#     cossim_matrix = np.load('static/cossim-matrix.npy')
+
+#     top_results = int(len(items)/2)
+#     total_vector = np.zeros(len(cossim_matrix))
+#     item_indexes = []
+#     for i in range(top_results):
+#         # centroid vector
+#         item_idx = item_to_index[items[i]]
+#         item_indexes.append(item_idx)
+#         total_vector += cossim_matrix[item_idx]
+    
+#     total_vector /= top_results
+    
+#     results = []
+#     for idx, score in enumerate(total_vector):
+#         if idx not in item_indexes:
+#             results.append((index_to_item[idx], score))
+#     results = sorted(results, key=lambda x: x[1], reverse=True)
+
+#     result_items = [tup[0] for tup in results]
+
+#     return result_items[:5]
 
 def cf_exec(items):
 

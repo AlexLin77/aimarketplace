@@ -59,7 +59,7 @@ ratings['age'] = ratings['age'].map(inv_ages_map)
 ratings['gender'] = ratings['gender'].map(inv_genders_map)
 ratings['occupation'] = ratings['occupation'].map(inv_occupations_map)
 
-trainset, testset = train_test_split(ratings, test_size=0.1)
+trainset, testset = train_test_split(ratings, test_size=0.05)
 
 # items layer
 items_in = keras.layers.Input(shape=[1])
@@ -86,12 +86,6 @@ occupations_in = keras.layers.Input(shape=[1])
 occupations_embed = keras.layers.Embedding(input_dim=unique_occupations.shape[0]+1, output_dim=20, input_length=1)(occupations_in)
 occupations_out = keras.layers.Reshape([20])(occupations_embed)
 
-items_out = keras.layers.Dense(32, activation='relu')(items_out)
-users_out = keras.layers.Dense(32, activation='relu')(users_out)
-ages_out = keras.layers.Dense(32, activation='relu')(ages_out)
-genders_out = keras.layers.Dense(32, activation='relu')(genders_out)
-occupations_out = keras.layers.Dense(32, activation='relu')(occupations_out)
-
 all_users_out = keras.layers.Concatenate()([users_out, ages_out, genders_out, occupations_out])
 
 all_layers = keras.layers.Concatenate()([all_users_out, items_out])
@@ -104,7 +98,7 @@ model.compile(optimizer=opt, loss='mean_squared_error')
 
 # FINISH THIS
 model.fit([trainset['userId'], trainset['age'], trainset['gender'], trainset['occupation'], 
-           trainset['movieId']], trainset['rating'], batch_size=32, epochs=8, verbose=1, 
+           trainset['movieId']], trainset['rating'], batch_size=16, epochs=11, verbose=1, 
           validation_data=([testset['userId'], testset['age'], testset['gender'], testset['occupation'], testset['movieId']], testset['rating']))
 
 dicts_compiled = {}
