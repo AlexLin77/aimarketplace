@@ -59,7 +59,7 @@ ratings['age'] = ratings['age'].map(inv_ages_map)
 ratings['gender'] = ratings['gender'].map(inv_genders_map)
 ratings['occupation'] = ratings['occupation'].map(inv_occupations_map)
 
-trainset, testset = train_test_split(ratings, test_size=0.05)
+trainset, testset = train_test_split(ratings, test_size=0.25)
 
 # items layer
 items_in = keras.layers.Input(shape=[1])

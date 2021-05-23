@@ -5,13 +5,15 @@
         "Waiting to Exhale (1995)": 3.0,
         "Sabrina (1995)": 2.5,
         "Tom and Huck (1995)": 3.0,
-        "Toy Story (1995)": 1.5
+        "Toy Story (1995)": 2.0,
+        "Fried Green Tomatoes (1991)": 0.5
     },
     "guest": {
         "Sabrina (1995)": 1.0,
         "Jumanji (1995)": 0.5,
         "Waiting to Exhale (1995)": 0.5,
-        "Tom and Huck (1995)": 0.5
+        "Tom and Huck (1995)": 0.5,
+        "Grumpier Old Men (1995)": 1.5
     },
     "test2": {
         "Toy Story (1995)": 1.0,

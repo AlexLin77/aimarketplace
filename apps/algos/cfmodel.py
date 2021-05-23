@@ -16,7 +16,7 @@ final_mtx = csr_matrix(df_mtx)
 
 trainset, testset= train_test_split(final_mtx, test_size=0.15)
 
-model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=15, n_jobs=-1)
+model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=10)
 model.fit(trainset)
 
 # for vector in testset:

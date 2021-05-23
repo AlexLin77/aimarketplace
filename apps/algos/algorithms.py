@@ -9,6 +9,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MaxAbsScaler
 from tensorflow.keras.models import load_model
 from tensorflow import argsort
+from scipy.sparse.linalg import svds
 from collections import defaultdict
 import pickle
 import numpy as np
@@ -50,6 +51,9 @@ def refresh(request):
                 print(product.title)
                 product.is_featured = True
                 product.save()
+            if product.title not in featured and product.is_featured:
+                product.is_featured = False
+                product.save()
 
     else:
           curr_user = 'guest'
@@ -73,6 +77,9 @@ def refresh(request):
                   if product.title in featured:
                       print(product.title)
                       product.is_featured = True
+                      product.save()
+                  if product.title not in featured and product.is_featured:
+                      product.is_featured = False
                       product.save()
 
 def content_filter(items):
@@ -186,11 +193,53 @@ def content_filter(items):
 
 #     return result_items[:5]
 
+def user_svd(user):
+
+    df = pd.read_csv('static/movies.csv')
+    ratings = pd.read_csv('static/ratings.csv')
+
+    ratings = ratings.drop(['timestamp'], axis=1)
+    ratings_mtx = ratings.pivot(index='movieId', columns='userId', values='rating').fillna(0)
+
+    with open('index-to-movie.json', 'r') as jfile:
+        index_to_movie = json.load(jfile)
+
+    idx_to_mv = {i:val for i, val in enumerate(ratings_mtx.index)}
+
+    U, S, Vt = svds(ratings_mtx, k=30)
+
+    Sd = np.diag(S)
+
+    predictions = np.dot(np.dot(U, Sd), Vt)
+
+    pdf = pd.DataFrame(predictions)
+
+    # print(pdf.head())
+
+    user_id = 0
+    user_ratings = sorted(pdf[user_id], reverse=True)
+
+    top_idxs = []
+    for i in range(20):
+        idx = pdf.index[pdf[user_id] == user_ratings[i]]
+        top_idxs.append(idx[0])
+
+    top_movies = []
+    for idx in top_idxs:
+        movie_idx = idx_to_mv[idx]
+        if str(movie_idx) in index_to_movie:
+            movie_title = index_to_movie[str(movie_idx)]
+            top_movies.append(movie_title)
+
+    for movie in top_movies:
+        print(movie)
+
+
 def cf_exec(items):
 
-    # filename = 'apps/algos/knnmodel.sav'
+    filename = 'apps/algos/knnmodel.sav'
 
-    # model = pickle.load(open(filename, 'rb'))
+    model = pickle.load(open(filename, 'rb'))
 
     df = pd.read_csv('static/ratings.csv')
 
@@ -198,15 +247,15 @@ def cf_exec(items):
 
     df_mtx = df.pivot(index='movieId', columns='userId', values='rating').fillna(0)
 
-    final_mtx = csr_matrix(df_mtx)
+    # final_mtx = csr_matrix(df_mtx)
 
-    trainset, testset= train_test_split(final_mtx, test_size=0.15)
+    # trainset, testset= train_test_split(final_mtx, test_size=0.15)
 
-    # scaler = MaxAbsScaler()
-    # trainset_scaled = scaler.fit_transform(trainset)
+    # # scaler = MaxAbsScaler()
+    # # trainset_scaled = scaler.fit_transform(trainset)
 
-    model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=15, n_jobs=-1)
-    model.fit(trainset)
+    # model = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=10)
+    # model.fit(trainset)
 
     # print(trainset.shape)
 
@@ -225,19 +274,17 @@ def cf_exec(items):
     for movie in items:
         movie_idxs.append(movie_to_index[movie])
     
-    print(movie_idxs)
-    
     selected = df_mtx.loc[movie_idxs]
 
     final_selected = csr_matrix(selected)
-    distances, indices = model.kneighbors(final_selected, n_neighbors=5)
+    dist, ind = model.kneighbors(final_selected, n_neighbors=10)
 
     # get closest ones only
-    for i in range(int(distances.size/5)):
-        dist = distances[i].item(0)
-        idx = str(indices[i].item(0))
+    for i in range(int(dist.size/5)):
+        score = dist[0, i].item(0)
+        idx = str(ind[0, i].item(0))
         if idx in index_to_movie and idx not in items:
-            results.append((index_to_movie[str(idx)], dist))
+            results.append((index_to_movie[str(idx)], score))
     
     results = sorted(results, key=lambda x: x[1], reverse=False)
 
